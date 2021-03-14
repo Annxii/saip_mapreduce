@@ -380,3 +380,28 @@ db[outCollection].find().forEach(e => printjson(e));
 }
 ```
 <p>&nbsp;</p>
+
+## 10. Number of 'writer'
+Finding 'writer' is near identical to finding the number of 5-star ratings in _Exercise 2_. _users_-collection is filtered by occupation and the result is counted.
+
+## Code
+```javascript
+let count = db.users
+    .find({ "occupation": 20 })
+    .count();
+
+print(count);
+```
+
+## Answer
+> Number of writers = 281
+
+<p>&nbsp;</p>
+
+## 11. Rating distribution for 'writers'
+
+## Code
+```javascript
+```
+
+## Answer
