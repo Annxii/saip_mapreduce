@@ -1,25 +1,23 @@
 db =  new Mongo().getDB('movielens');
 
-let outCollection = "lowestRated";
+let outCollection = "saip_lowest_rated";
 
 function mapLowestRated(){
-    if (this.value.numOfRatings >= 100){
-        emit(1, { movie_id: this._id, rating: this.value.average });
-    } 
+    emit(1, { movie_id: this._id, rating: this.value.average, numOfRatings: this.value.numOfRatings });
 }
 
 function reduceLowestRated(key, values){
-    let lowest = values[0];
-    for (let i = 1; i < values.length; i++){
-        if(values[i].rating < lowest.rating){
-            lowest = values[i];
+    let lowest = { rating: 1000 };
+    values.filter(e => e.numOfRatings >= 100).forEach(e => {
+        if(e.rating < lowest.rating){
+            lowest = e;
         } 
-    }
+    });
 
     return lowest;
 }
 
-db.avgRatings.mapReduce(
+db.saip_avg_ratings.mapReduce(
     mapLowestRated,
     reduceLowestRated,
     { out: outCollection } 

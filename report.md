@@ -55,11 +55,9 @@ function mapNumOfRating(){
     emit(this.rating, 1);
 } 
 
-function reduceNumOfRatings(key, values){
+function reduceNumOfRatings(key, values) {
     let total = 0;
-    for (let i = 0; i < values.length; i++){
-        total += values[i];
-    }
+    values.forEach(n => total += n);
 
     return total;
 }
@@ -211,9 +209,9 @@ db[outCollection].find({ _id: 733 }).forEach(e => printjson(e));
 <p>&nbsp;</p>
 
 ## 7. Lowest rated movie
-We have previously caluclated the average rating for all movies in _ Exercise 4./6._ - we use this dataset to find the lowest rated movie. The dataset contains the number of ratings given. We use this first in the mapping to discard movies with too few ratings received. Since we are only looking for a single result we map to the constant key of _1_, bringing all the average ratings into the same partition. The mapped result is simply an object with movie ID and average rating.
+We have previously caluclated the average rating for all movies in _ Exercise 4./6._ - we use this dataset to find the lowest rated movie. The mapping merely makes a bit of formatting to the existing records. Since we are only looking for a single result we map to the constant key of _1_, bringing all the average ratings into the same partition.
 
-All the reduction does is find the lowest rated object of the collection.
+The reduction filters out any movies with less than 100 ratings and find the movie with the lowest rating within the chunk.
 
 _The result only contain the id and average rating of the movie. In order to get something a little more human readable we find the title from the "movies"-collection_.
 
@@ -222,18 +220,16 @@ _The result only contain the id and average rating of the movie. In order to get
 let outCollection = "lowestRated";
 
 function mapLowestRated(){
-    if (this.value.numOfRatings >= 100){
-        emit(1, { movie_id: this._id, rating: this.value.average });
-    } 
+    emit(1, { movie_id: this._id, rating: this.value.average, numOfRatings: this.value.numOfRatings });
 }
 
 function reduceLowestRated(key, values){
-    let lowest = values[0];
-    for (let i = 1; i < values.length; i++){
-        if(values[i].rating < lowest.rating){
-            lowest = values[i];
+    let lowest = { rating: 1000 };
+    values.filter(e => e.numOfRatings >= 100).forEach(e => {
+        if(e.rating < lowest.rating){
+            lowest = e;
         } 
-    }
+    });
 
     return lowest;
 }
@@ -260,3 +256,127 @@ db[outCollection].find().forEach(e => {
 	"rating" : 1.4666666666666666
 }
 ```
+<p>&nbsp;</p>
+
+## 8./9. Movies by genre
+The mapping phase pivots the movie by its genres, making a record for each genre with a list of movies - starting with only one.
+
+The reduction phase discards all records which are not in the requested genre and then merges the result from each of the remaining records.
+
+Since we are only looking for a single result we map to the constant key of _1_, bringing all the average ratings into the same partition. 
+
+### Parameterizing the script
+_Exercise 8 & 9_ are more or less identical - _8_ is counting while _9_ is listing the items. Instead of creating two nearly identical script we opted for parameterization of the script. The script require the parameter 'genre' to be defined to execute. This parameter is then used to create a dynamic collection name for the output as well as filtering the movies.
+
+We configure the _mapReduce_ execution with a _scope_ that defines global variables available within the execution scope of the process. In our case, we expose the 'genre'-variable.
+
+To define 'genre' when prepend the execution of the actual script with a small adhoc script only defining 'genre'.
+
+```shell
+mongo --quiet --eval "let genre = 'Animation';" 08-09-genre-movies.js
+```
+
+### Code
+```javascript
+if(!genre){
+    throw '\'genre\' not specified';
+} 
+
+let outCollection = `saip_${genre.toLowerCase()}_movies`;
+
+function mapGenreMovies(){
+    let genres = Array.isArray(this.genres) ? this.genres : [this.genres];
+    genres.forEach(g => {
+        emit(1, {
+            genre: g,
+            count: 1,
+            movies: [
+               { id: this._id, title: this.title }  
+            ] 
+        });
+    })
+} 
+
+function reduceGenreMovies(key, values){
+    let result = { genre: genre, count: 0, movies: [] };
+    values.filter(m => m.genre === genre).forEach(m => {
+        result.count += m.count;
+        Array.prototype.push.apply(result.movies, m.movies);
+    });
+
+    return result;
+} 
+
+db.movies.mapReduce(
+    mapGenreMovies,
+    reduceGenreMovies,
+    {
+        out: outCollection,
+        scope: {
+            genre: genre
+        } 
+    }
+);
+
+db[outCollection].find().forEach(e => printjson(e));
+```
+
+### Answer (8.)
+> Number of 'animation' movies = 105
+```json
+{
+	"_id" : 1,
+	"value" : {
+		"genre" : "Animation",
+		"count" : 105,
+		"movies" : [
+			{
+				"id" : 3945,
+				"title" : "Digimon: The Movie (2000)"
+			},
+			{
+				"id" : 3799,
+				"title" : "Pokemon the Movie 2000 (2000)"
+			},
+
+...
+
+			{
+				"id" : 1,
+				"title" : "Toy Story (1995)"
+			}
+		]
+	}
+}
+
+```
+
+### Answer (9.)
+> Collection 'saip_drama_movies' containing 'Drama' movies
+```json
+{
+	"_id" : 1,
+	"value" : {
+		"genre" : "Drama",
+		"count" : 1603,
+		"movies" : [
+			{
+				"id" : 3952,
+				"title" : "Contender, The (2000)"
+			},
+			{
+				"id" : 3951,
+				"title" : "Two Family House (2000)"
+			},
+
+...
+
+			{
+				"id" : 4,
+				"title" : "Waiting to Exhale (1995)"
+			}
+		]
+	}
+}
+```
+<p>&nbsp;</p>

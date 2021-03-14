@@ -1,6 +1,6 @@
 db =  new Mongo().getDB('movielens');
 
-let outCollection = "ratingDistributions";
+let outCollection = "saip_rating_dist";
 
 function mapRatingDistribution(){
     let ratings = { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };

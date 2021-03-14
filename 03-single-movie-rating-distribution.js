@@ -1,17 +1,15 @@
 db =  new Mongo().getDB('movielens');
 
 let movie_id = 733;
-let outCollection = "ratingDistribution_" + movie_id;
+let outCollection = "saip_rating_dist_" + movie_id;
 
 function mapNumOfRating(){
     emit(this.rating, 1);
 } 
 
-function reduceNumOfRatings(key, values){
+function reduceNumOfRatings(key, values) {
     let total = 0;
-    for (let i = 0; i < values.length; i++){
-        total += values[i];
-    }
+    values.forEach(n => total += n);
 
     return total;
 }

@@ -1,6 +1,6 @@
 db =  new Mongo().getDB('movielens');
 
-let outCollection = "avgRatings";
+let outCollection = "saip_avg_ratings";
 
 function mapAvgRating(){
     let value = {
