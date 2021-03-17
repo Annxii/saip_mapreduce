@@ -153,30 +153,30 @@ db[outCollection].find({ "_id": 733 }).forEach(e => printjson(e));
 <p>&nbsp;</p>
 
 ## 05. Calculate distribution of all movies
-The final result for each movie should be an object with a property for each possible rating with values indicating the number of occurrences of the rating for the movie. The mapping partitions by the ID of the movie and produces an object similar to the final result. This object has and indication of 0 for all possible ratings except for the rating of the record which is 1. The reduction sums up the number of occurrences for each possible rating.
+The mapping partitions the ratings by the ID of the movie they belong to and produces an array of length 5 representing the possible ratings (1 to 5) in order. This array have 0 ("zero") in all positions except for the rating given. The reduction sums up the number of occurrences for each possible rating.
 
-_The output is merely an example of the final result from a single movie - the same as in exercise 3 to verify that the result of this movie matches that of exercise 3._
+_The output samples the full result by displying the result from 10 movies, including the same as in exercise 3 to verify that the result of this movie matches that of exercise 3._
 
 ### Code
 ```javascript
-let outCollection = "ratingDistributions";
+let outCollection = "saip_rating_dist";
 
-function mapRatingDistribution(){
-    let ratings = { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };
-    ratings[this.rating + ""] = 1; 
-    emit(this.movie_id, { ratings: ratings });
-}
-
-function reduceRatingDistribution(key, values){
-    let result = { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 }; 
-    for (let i = 0; i < values.length; i++){
-        for (let p in result){
-            result[p] += values[i].ratings[p]; 
-        } 
-    } 
-
-    return { ratings: result };
+function mapRatingDistribution() {
+    let distribution = new Array(5).fill(0);
+    distribution[this.rating - 1] = 1;
+    emit(this.movie_id, distribution);
 } 
+
+function reduceRatingDistribution(key, values) {
+    let result = new Array(5).fill(0);
+    for (let i = 0; i < values.length; i++) {
+        for (let x = 0; x < result.length; x++) {
+            result[x] += values[i][x];
+        }
+    }
+
+    return result;
+}
 
 db.ratings.mapReduce(
     mapRatingDistribution,
@@ -184,23 +184,25 @@ db.ratings.mapReduce(
     { out: outCollection }
 );
 
-db[outCollection].find({ _id: 733 }).forEach(e => printjson(e));
+db[outCollection]
+    .find({ _id: { $gte: 733 } })
+    .sort({_id: 1})
+    .limit(10)
+    .forEach(e => printjson(e));
 ```
 
 ### Sample test
 ```json
-{
-	"_id" : 733,
-	"value" : {
-		"ratings" : {
-			"1" : 30,
-			"2" : 97,
-			"3" : 386,
-			"4" : 528,
-			"5" : 299
-		}
-	}
-}
+{ "_id" : 733, "value" : [ 30, 97, 386, 528, 299 ] }
+{ "_id" : 734, "value" : [ 0, 1, 1, 1, 0 ] }
+{ "_id" : 735, "value" : [ 13, 12, 24, 30, 22 ] }
+{ "_id" : 736, "value" : [ 94, 195, 361, 344, 116 ] }
+{ "_id" : 737, "value" : [ 125, 82, 59, 27, 7 ] }
+{ "_id" : 741, "value" : [ 5, 14, 54, 116, 125 ] }
+{ "_id" : 742, "value" : [ 37, 49, 54, 27, 7 ] }
+{ "_id" : 743, "value" : [ 27, 21, 37, 15, 7 ] }
+{ "_id" : 744, "value" : [ 1, 1, 1, 0, 0 ] }
+{ "_id" : 745, "value" : [ 3, 2, 40, 217, 395 ] }
 ```
 <p>&nbsp;</p>
 
@@ -398,10 +400,92 @@ print(count);
 
 <p>&nbsp;</p>
 
-## 11. Rating distribution for 'writers'
+## 11./12. Rating distribution for specific occupation
+Calulating the distribution of ratings from a specific occupations uses the same map-reduce-functions as _Exercise 5_. The difference resides in the filtering. Before executing the map-reduce for the actual question another map-reduce is executed generating an array of IDs on all the users of the specific occupation. This array is then used as a filter in the second map-reduce-function finding the distribution for each movie but on a reduced set of ratings.
+
+_Similar to_ Exercise 8 and 9 _this script has been parameterized to be able to produce results specialized to different occuptions. The question of the distribution for a specific movie by users with a specific occupation can subsequently by answered by querying the result of map-reduce-function defined below. Alternatively, this ID of the movie could be used as an additional query parameter when executing the map-reduce-function._
 
 ## Code
 ```javascript
+if(!occupation) {
+    throw '\'occupation\' not specified';
+}
+
+let users = db.users.mapReduce(
+    function() { emit(1, [this._id]); },
+    function(key, values) { return Array.prototype.concat.apply([], values); },
+    {
+        out: { inline: 1},
+        query: { "occupation": occupation }
+    }
+).results[0].value;
+
+
+let outCollection = `saip_occupation_${occupation}_rating_distribution`;
+
+function mapWriterRatingDistribution() {
+    let distribution = new Array(5).fill(0);
+    distribution[this.rating - 1] = 1;
+    emit(this.movie_id, distribution);
+} 
+
+function reduceWriterRatingDistribution(key, values) {
+    let result = new Array(5).fill(0);
+    for (let i = 0; i < values.length; i++) {
+        for (let x = 0; x < result.length; x++) {
+            result[x] += values[i][x];
+        }
+    }
+
+    return result;
+}
+
+db.ratings.mapReduce(
+    mapWriterRatingDistribution,
+    reduceWriterRatingDistribution,
+    {
+        out: outCollection,
+        query: { "user_id": { $in: users }}
+    }
+);
+
+db[outCollection]
+    .find({ _id: { $gte: 733 }})
+    .sort({ _id: 1})
+    .limit(10)
+    .forEach(e => printjson(e));
 ```
 
-## Answer
+## Answer (11.)
+```shell
+mongo --quiet --eval "let occupation = 20;" 11-rating-distribution-for-occupation.js
+```
+```json
+{ "_id" : 733, "value" : [ 4, 7, 15, 18, 9 ] }
+{ "_id" : 735, "value" : [ 1, 1, 0, 2, 4 ] }
+{ "_id" : 736, "value" : [ 7, 12, 12, 13, 1 ] }
+{ "_id" : 737, "value" : [ 11, 5, 0, 0, 0 ] }
+{ "_id" : 741, "value" : [ 0, 0, 2, 10, 9 ] }
+{ "_id" : 742, "value" : [ 5, 1, 1, 0, 0 ] }
+{ "_id" : 743, "value" : [ 1, 1, 3, 0, 0 ] }
+{ "_id" : 744, "value" : [ 0, 0, 1, 0, 0 ] }
+{ "_id" : 745, "value" : [ 1, 0, 6, 20, 21 ] }
+{ "_id" : 746, "value" : [ 0, 0, 1, 3, 2 ] }
+```
+
+## Answer (12.)
+```shell
+mongo --quiet --eval "let occupation = 12;" 11-rating-distribution-for-occupation.js
+```
+```javascript
+{ "_id" : 733, "value" : [ 2, 8, 26, 30, 15 ] }
+{ "_id" : 735, "value" : [ 1, 0, 0, 1, 2 ] }
+{ "_id" : 736, "value" : [ 3, 11, 24, 20, 8 ] }
+{ "_id" : 737, "value" : [ 7, 7, 7, 3, 0 ] }
+{ "_id" : 741, "value" : [ 1, 0, 6, 12, 12 ] }
+{ "_id" : 742, "value" : [ 0, 2, 3, 1, 0 ] }
+{ "_id" : 743, "value" : [ 1, 1, 1, 0, 1 ] }
+{ "_id" : 745, "value" : [ 0, 1, 2, 20, 41 ] }
+{ "_id" : 747, "value" : [ 1, 0, 0, 0, 0 ] }
+{ "_id" : 748, "value" : [ 2, 3, 14, 12, 3 ] }
+```

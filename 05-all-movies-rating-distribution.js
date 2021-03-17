@@ -2,22 +2,22 @@ db =  new Mongo().getDB('movielens');
 
 let outCollection = "saip_rating_dist";
 
-function mapRatingDistribution(){
-    let ratings = { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };
-    ratings[this.rating + ""] = 1; 
-    emit(this.movie_id, { ratings: ratings });
-}
-
-function reduceRatingDistribution(key, values){
-    let result = { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 }; 
-    for (let i = 0; i < values.length; i++){
-        for (let p in result){
-            result[p] += values[i].ratings[p]; 
-        } 
-    } 
-
-    return { ratings: result };
+function mapRatingDistribution() {
+    let distribution = new Array(5).fill(0);
+    distribution[this.rating - 1] = 1;
+    emit(this.movie_id, distribution);
 } 
+
+function reduceRatingDistribution(key, values) {
+    let result = new Array(5).fill(0);
+    for (let i = 0; i < values.length; i++) {
+        for (let x = 0; x < result.length; x++) {
+            result[x] += values[i][x];
+        }
+    }
+
+    return result;
+}
 
 db.ratings.mapReduce(
     mapRatingDistribution,
@@ -25,4 +25,8 @@ db.ratings.mapReduce(
     { out: outCollection }
 );
 
-db[outCollection].find({ _id: 733 }).forEach(e => printjson(e));
+db[outCollection]
+    .find({ _id: { $gte: 733 } })
+    .sort({_id: 1})
+    .limit(10)
+    .forEach(e => printjson(e));
