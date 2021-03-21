@@ -1,0 +1,61 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+
+    "definitions": {
+        "rating": {
+            "type": "object",
+            "properties": {
+                "rating": { "type": "integer" },
+                "timestamp": { "type": "string" },
+                "user": { "$ref": "#/definitions/user" }
+            }
+        },
+        "user": {
+            "type": "object",
+            "properties": {
+                "_id": { "type": "integer" },
+                "gender": { "type": "string" },
+                "age": { "type": "integer" },
+                "occupation": { "type": "integer" },
+                "zip_code": { "type": "string" }
+            }
+        }
+    },
+
+    "type": "object",
+    "properties": {
+        "_id": { "type": "integer" },
+        "title": { "type": "string" },
+        "genres": {
+            "type": "array",
+            "items": { "type": "string" }
+        },
+        "ratings": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/rating" }
+        }
+    },
+    "examples": [
+        {
+            "_id": 733,
+            "title": "The Rock",
+            "genres": [
+                "action",
+                "drama"
+            ],
+            "ratings": [
+                {
+                    "rating": 5,
+                    "timestamp": "978300760",
+                    "user": {
+                        "_id": 123,
+                        "gender": "M",
+                        "age": 1,
+                        "occupation": 20,
+                        "zip_code": "48067"
+                    }
+                }
+            ]
+        }
+    ]
+}
