@@ -1,11 +1,10 @@
 db =  new Mongo().getDB('movielens');
 
-let outCollection = "saip_denormalized_movies";
+let outCollection = "saip_denormalized_users";
 
 db.users.mapReduce(
     function () {
         let item = {
-            id: this._id,
             gender: this.gender,
             age: this.age,
             occupation: this.occupation,
@@ -37,8 +36,7 @@ db.ratings.mapReduce(
     function (key, values) {
         let result = { ratings: [] };
         values.forEach(function(e) {
-            if(e.gender) {
-                result.id = e.id;
+            if(e.gender !== undefined) {
                 result.gender = e.gender;
                 result.age = e.age;
                 result.occupation = e.occupation;
@@ -56,6 +54,7 @@ db.ratings.mapReduce(
 
 printjson(db[outCollection].findOne());
 
+/*
 db[outCollection].mapReduce(
     function() {
        let v = this.value;
@@ -127,3 +126,4 @@ db.movies.mapReduce(
 )
 
 printjson(db[outCollection].findOne({ _id: 733 }));
+/* */

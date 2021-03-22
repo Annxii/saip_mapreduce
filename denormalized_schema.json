@@ -5,19 +5,22 @@
         "rating": {
             "type": "object",
             "properties": {
+                "movie_id": { "type": "integer" },
                 "rating": { "type": "integer" },
-                "timestamp": { "type": "string" },
-                "user": { "$ref": "#/definitions/user" }
+                "timestamp": { "type": "string" }
             }
         },
         "user": {
             "type": "object",
             "properties": {
-                "_id": { "type": "integer" },
                 "gender": { "type": "string" },
                 "age": { "type": "integer" },
                 "occupation": { "type": "integer" },
-                "zip_code": { "type": "string" }
+                "zip_code": { "type": "string" },
+                "ratings": {
+                    "type": "array",
+                    "items": { "$ref": "#/definitions/rating" }
+                }
             }
         }
     },
@@ -25,37 +28,30 @@
     "type": "object",
     "properties": {
         "_id": { "type": "integer" },
-        "title": { "type": "string" },
-        "genres": {
-            "type": "array",
-            "items": { "type": "string" }
-        },
-        "ratings": {
-            "type": "array",
-            "items": { "$ref": "#/definitions/rating" }
-        }
+        "value": { "$ref": "#/definitions/user" }
     },
     "examples": [
         {
-            "_id": 733,
-            "title": "The Rock",
-            "genres": [
-                "action",
-                "drama"
-            ],
-            "ratings": [
-                {
-                    "rating": 5,
-                    "timestamp": "978300760",
-                    "user": {
-                        "_id": 123,
-                        "gender": "M",
-                        "age": 1,
-                        "occupation": 20,
-                        "zip_code": "48067"
+            "_id": 4785,
+            "value": {
+                "gender" : "F",
+                "age" : 25,
+                "occupation" : 14,
+                "zip_code" : "55104",
+                "ratings": [
+                    {
+                        "movie_id" : 2058,
+                        "rating" : 4,
+                        "timestamp" : "963005040"
+                    },
+                    {
+                        "movie_id" : 3791,
+                        "rating" : 4,
+                        "timestamp" : "963002313"
                     }
-                }
-            ]
+        
+                ]        
+            }
         }
     ]
 }
